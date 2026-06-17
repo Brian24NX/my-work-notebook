@@ -186,3 +186,106 @@ frames to count individual animals.*
 - **#10** MegaDetector benchmark (2× the recall of SAM 3).
 - **#11** MegaDetector → SAM 3 box-prompt wiring; per-frame beats seed+propagate.
 - **#12** cross-frame IoU track linking → individual counts (±1 of experts ~79%).
+
+---
+
+# APPENDIX — cross-frame IoU track linking, step by step (the deep version)
+
+## The one idea: **a box is not an animal**
+
+Per-frame detection gives a box on the animal in *each* frame, but the computer
+doesn't know those boxes belong together. Naive counting fails:
+
+**Case 1 — one duiker walking across the clip:**
+```
+  Frame 1     Frame 2     Frame 3
+  🦌·····     ··🦌···     ····🦌·     ← same duiker walking left→right
+   [box]       [box]       [box]
+```
+3 boxes, but **1 animal**. Counting boxes → "3 duikers." ❌
+
+**Case 2 — two duikers standing apart, all 3 frames:**
+```
+  Frame 1      Frame 2      Frame 3
+  🦌···🦌      🦌···🦌      🦌···🦌
+  [box][box]   [box][box]   [box][box]
+```
+6 boxes, but **2 animals**. Counting boxes → "6 duikers." ❌
+
+➡️ The number of boxes says nothing about the number of animals. To count
+animals we must figure out **which boxes are the same individual seen again next
+frame** — that's *linking*.
+
+## Step 1 — IoU: a number for "do these two boxes overlap?"
+
+**IoU = Intersection over Union** = (area the boxes SHARE) ÷ (total area they
+cover TOGETHER). From **0** (no overlap) to **1** (identical box).
+
+```
+  Box A (frame 5)            Box A′ (frame 6, moved 1 right)
+   0123456789                 0123456789
+ 1 ..AAAA....               1 ...AAAA...
+ 2 ..AAAA....               2 ...AAAA...
+ 3 ..AAAA....               3 ...AAAA...
+```
+- Box A = 4 cols × 3 rows = 12 cells; Box A′ = 12 cells.
+- Shared = cols 3–5 × 3 rows = 9 cells.
+- Together = 12 + 12 − 9 = 15 cells.
+- **IoU = 9 ÷ 15 = 0.6** → high → "same animal, just moved a little."
+
+Far apart → 0 shared → **IoU = 0** → "different animals." We use a cutoff of
+**0.3**: ≥0.3 ⇒ same animal.
+
+## Step 2 — Linking into "tracks"
+
+A **track** = one individual's trail through the frames. The rule, frame by frame:
+> For each box in the new frame: overlaps (IoU ≥ 0.3) a box from the previous
+> frame? **Yes →** join that track. **No →** start a new track.
+
+**Case 1 (one walking duiker):**
+```
+  Frame 1: box A1               → start TRACK 1 = {A1}
+  Frame 2: A2 overlaps A1? YES  → A2 joins TRACK 1
+  Frame 3: A3 overlaps A2? YES  → A3 joins TRACK 1
+  RESULT: 1 track → 1 individual ✅  (not 3)
+```
+**Case 2 (two standing duikers):**
+```
+  Frame 1: L1, R1 → TRACK 1={L1}, TRACK 2={R1}
+  Frame 2: L2→TRACK 1, R2→TRACK 2
+  Frame 3: L3→TRACK 1, R3→TRACK 2
+  RESULT: 2 tracks → 2 individuals ✅  (not 6)
+```
+**New animal walks in:**
+```
+  Frame 1: L1 → TRACK 1
+  Frame 2: L2→TRACK 1;  NEW R2 overlaps nothing → start TRACK 2
+  RESULT: 2 tracks → a second animal appeared ✅
+```
+**Number of tracks = number of individual animals.** That's the count.
+
+## Step 3 — missed frames ("max_gap")
+
+A duiker boxed in frame 1, **missed** in frame 2 (behind a bush), boxed again in
+frame 3 — its frame-3 box overlaps nothing in frame 2, so it would start a NEW
+track → count the one duiker as 2. ❌ So we let a track survive a couple missed
+frames (**`max_gap`** = 2) → the frame-3 box re-joins the frame-1 track → stays 1. ✅
+
+## Step 4 — why the count is "~±1", not perfect
+
+We sample frames far apart, so a fast animal moves a lot between sampled frames →
+its boxes **don't overlap** → linking splits one animal into several tracks
+("**fragmentation**") → overcount. That's why the three count definitions differ:
+```
+  max_per_frame   = most boxes in any SINGLE frame (robust; no linking needed)
+  n_tracks        = number of linked tracks ← inflated by fragmentation
+  n_tracks_min2   = tracks seen in ≥2 frames (ignore 1-frame blips)
+```
+- `max_per_frame` best (within ±1 of experts **79%** of the time).
+- `n_tracks_min2` unbiased; raw `n_tracks` overcounts.
+- "within ±1, 79%" = on ~4 of 5 clips our count was exact or off by one animal.
+  Better linking / closer frame sampling would tighten it.
+
+**Recap:** per-frame gives boxes but no identities → IoU measures overlap →
+linking stitches each animal's boxes into one track → count tracks = count
+animals → ~±1 today, fragmentation is the thing to improve.
