@@ -102,10 +102,31 @@ smallest MAE — more accurate overall, with a mild undercount tendency.
 
 Fraction of clips where the error is 0 or ±1 (exactly right, or off by one animal).
 
+**Read "±1" as "plus or minus one" = off by AT MOST one animal, in either
+direction.** It INCLUDES the exact matches — it is *not* "off by exactly 1." So a
+clip is "within ±1" if our number is the true number, or one too many, or one too
+few (error is −1, 0, or +1).
+
+Worked example (5 clips):
+
+```
+  clip │ expert (true) │ ours │ error = ours − true │ within ±1?
+  ─────┼───────────────┼──────┼─────────────────────┼───────────
+   A   │       2       │  2   │         0           │  ✓ exact
+   B   │       1       │  2   │        +1           │  ✓ one too many
+   C   │       3       │  2   │        −1           │  ✓ one too few
+   D   │       4       │  1   │        −3           │  ✗ off by 3
+   E   │       1       │  1   │         0           │  ✓ exact
+```
+   4 of the 5 clips are within ±1  →  "80% within ±1" for this tiny set.
+
+On the number line it's just the middle three buckets:
+
 ```
    error:  −3   −2   −1    0   +1   +2   +3
            ✗    ✗   ✓✓✓  ✓✓✓ ✓✓✓   ✗    ✗
                      └──── within ±1 ────┘
+                  (off by one or less, both directions)
 ```
 
 **within ±1 = 79% → on ~4 of 5 clips our count matched exactly or was off by one.**
