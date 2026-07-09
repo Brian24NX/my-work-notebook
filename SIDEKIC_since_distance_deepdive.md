@@ -4,7 +4,7 @@
 glossary — of the Distance, Productionizing, and Behavior work. Written so you can read it
 top-to-bottom and be fully oriented on **what we did, why, the results, and what's next.***
 
-Prepared 2026-07-08 · Brian Zhou. (Companion docs: `SIDEKIC_HANDOFF.md` = terse technical
+Prepared 2026-07-08, updated 2026-07-09 · Brian Zhou. (Companion docs: `SIDEKIC_HANDOFF.md` = terse technical
 reference; `SIDEKIC_progress_2026-07-07.md` = leadership slide-style summary. This one is the
 full story.)
 
@@ -21,7 +21,7 @@ full story.)
 | 1 Detect | Is there an animal? | ✅ merged | ~92% of animals found |
 | 2 Count | How many? | ✅ merged | ~90% within ±1 individual |
 | 3 Species | What species? | ✅ merged | micro-F1 ~57% (beats off-the-shelf) |
-| **4 Distance** | **How far away?** | ✅ done, **PR #26 in review** | **~0.95 m error** |
+| **4 Distance** | **How far away?** | ✅ done (all 100 stations), **PR #26 in review** | **0.95 m** measured + **~1.28 m** parametric |
 | **Productionizing** | **One push-button program** | ✅ done, **PR #23 in review** | **14,577 clips processed** |
 | **5 Behavior** | **What is it doing?** | 🔄 validated + improving | **macro-F1 0.384 (~2.4× baseline)** |
 
@@ -65,13 +65,15 @@ model/method tailored to our data.
 ## 2. Timeline — what we actually did since Distance
 
 ```
-  DISTANCE ───────────────────────────────────────────────▶ (done, PR #26)
+  DISTANCE ───────────────────────────────────────────▶ (done, all 100 stations, PR #26)
     ├─ tried off-the-shelf depth AI ............ failed (out of domain)
-    ├─ built per-station calibration ........... ✅ ~0.95 m
+    ├─ built per-station calibration (001-064) . ✅ ~0.95 m
     ├─ added camera-reaction flag (Colleen) .... ✅
     ├─ added low-confidence-station flag ....... ✅ 14/64
     ├─ tested Danni's tape-video idea .......... ✅ evaluated → doesn't generalize
-    └─ Jake's field info → parametric idea ..... ⏳ pending protocol
+    ├─ parametric model → 065-100 (no GT) ...... ✅ ~1.28 m, 14,181 distances  (NEW)
+    ├─ GT-label budget for new stations ........ ✅ ~5-6 labels → ~1 m         (NEW)
+    └─ addressed Danni's PR #26 review ......... ✅ bugs fixed, 28 tests       (NEW)
 
   PRODUCTIONIZING ────────────────────────────────────────▶ (done, PR #23)
     ├─ one end-to-end program .................. ✅ 14,577 clips
@@ -176,18 +178,54 @@ kept the hand-measured method as the deliverable.
 > was. Danni caught it; I retracted that number and fixed the code so it can't recur. This is normal,
 > healthy science — the point is we don't fool ourselves.
 
-### 3.6 Jake's field info → a possible future shortcut
-Jake (field team) told us the cameras are placed in a **standardised way** (≈1 m high, fixed angle,
-same orientation), and that the ground **slope** is the thing that varies. He's sending the exact
-install specs. If we know the geometry precisely, we may be able to compute distance for the
-**un-measured** cameras with no hand-measuring — **pending his protocol.**
+### 3.6 The parametric model — distances for the 36 un-measured cameras (065–100)
+Cameras 065–100 were never hand-measured, so the per-camera cheat sheet (3.3) can't be built for
+them. But Jake told us the cameras are installed in a **standardised way** (≈1 m high, fixed angle,
+same orientation) — which means **one shared camera geometry applies to every camera.** So instead
+of a separate cheat sheet per camera, we fit **one geometry formula** (real physics: a camera at a
+known height + tilt maps foot-position → distance) on the 64 measured cameras and reuse it everywhere.
 
-### 3.7 Distance — deliverable & status
-- **Deliverable:** the `distances` table for cameras 001–064 (`~/distance_out/distances_djeke.tsv`),
-  with distances, reaction flags, and the low-confidence list.
+**Does that actually transfer to a camera we never measured?** We tested it honestly: fit the geometry
+on 63 cameras, predict the 64th (which had *no* say in the fit), check the error. Repeat for each.
+
+| How we'd distance a new camera | Error | Needs |
+|---|---|---|
+| Per-camera cheat sheet (3.3) | 0.95 m | that camera's own hand-measured points |
+| **Shared geometry, no measuring** | **1.28 m** | nothing — just the standardised install |
+| Shared geometry + that camera's slope | 1.01 m | one slope number |
+
+So with **zero fieldwork** we get ~1.28 m (and ~1.15 m on normally-sited cameras). We ran it on the
+**3,642 animal-bearing clips** in 065–100 → **14,181 distances across all 36 cameras.** **The archive
+now has distances for all 100 cameras.**
+
+**Sanity check (there's no ground truth for 065–100, so we can't score it directly):** the predicted
+distances look just like the measured ones — same **4.0 m median** — and **97%** of animals appear in
+the same part of the frame the model was trained on (so it's barely extrapolating).
+
+![065–100 parametric distances — sanity-checked against ground truth](progress_charts/distance_065_qc.png)
+
+### 3.7 How many ground-truth labels does a *new* camera need?
+Danni asked a practical question for future deployments: if hand-measuring helps, **how many measured
+points per camera** do we need to stay near 1 m? We answered it from the existing data:
+
+![How many GT labels for ~1 m](progress_charts/distance_label_budget.png)
+
+- **~5–6 measured points** per well-sited camera → ~1 m.
+- With only **2–4**, anchor to the shared geometry + a small correction → ~1.1–1.2 m (fitting a fresh
+  line from 2 points is wildly unstable — 3.7 m).
+- Sloped cameras never reach 1 m no matter how many points → they need **re-siting, not more labels.**
+
+Concrete rule for the field team: *collect ~5 distance points at each new camera.*
+
+### 3.8 Distance — deliverable & status
+- **Deliverables:** the `distances` table for **001–064** (`~/distance_out/distances_djeke.tsv`, hand-
+  calibrated) **and 065–100** (`~/distance_065/distances_065.tsv`, parametric) — **all 100 cameras.**
 - **Code:** `calibrate_distance.py`, `emit_distances.py`, `flag_offkilter.py`, `detect_camera_jerk.py`,
-  `validate_reference_calibration.py`.
-- **Status:** complete; **pull request #26** in review (mergeable, waiting on Danni's approval).
+  `validate_reference_calibration.py`, `parametric_distance.py`, `distance_detect_065.py`,
+  `distance_label_budget.py`, `distance_065_qc.py`.
+- **Review addressed:** Danni's PR #26 review (a crash on markers-only calibration, an over-sensitive
+  reaction flag, + minor notes) and 6 Copilot notes — all fixed, **28 tests pass**, reply posted.
+- **Status:** complete (all 100 cameras); **pull request #26** in review, waiting on Danni's approval.
 
 ---
 
@@ -325,10 +363,11 @@ idle during data prep.
 
 | Thread | State | Key result | Waiting on |
 |---|---|---|---|
-| Distance | ✅ done | 0.95 m error, 64 cameras | Danni to merge #26 |
+| Distance (001–064) | ✅ done | 0.95 m, hand-calibrated | Danni to merge #26 |
+| Distance (065–100) | ✅ done | ~1.28 m parametric, 14,181 distances, QC-clean | Danni to merge #26 |
 | Distance flags | ✅ done | reaction + 14/64 low-confidence | — |
 | Reference-video calibration | ✅ evaluated, ruled out | doesn't generalize | — |
-| Parametric distance (065–100) | ⏳ pending | — | Jake's install protocol |
+| PR #26 review | ✅ addressed | bugs fixed, 28 tests pass, reply posted | Danni to merge #26 |
 | Productionizing | ✅ done | 14,577 clips | Danni to merge #23 |
 | Behavior | 🔄 improving | macro-F1 0.384 (2.4×) | precision work / decision to PR |
 
@@ -340,11 +379,14 @@ review, not on more work from us.**
 # 7. What's next (prioritized)
 
 1. **Get Danni to review/merge #23 + #26** — two finished stages, one click away. *Highest leverage.*
+   #26 (distance) is fully review-addressed; #23 (productionizing) is waiting too.
 2. **Behavior — precision pass** — cut false alarms (wind/vegetation) via hard negatives + better
    aggregation. Bigger lever than more data.
-3. **Jake's protocol → parametric distance** for the un-measured cameras (065–100).
-4. **Pose-based behavior track** (skeleton → PoseR) — queued behind the BehaveAI result.
-5. **Scale to other sites** (GTAP, MONDIKA) once their footage is mounted.
+3. **Pose-based behavior track** (skeleton → PoseR) — queued behind the BehaveAI result.
+4. **Scale to other sites** (GTAP, MONDIKA) once their footage is mounted.
+
+*Distance is now complete for all 100 cameras. Jake's install specs would only fine-tune the ~14
+sloped cameras — a bonus, not a blocker (and he may not have exact numbers, which is fine).*
 
 ---
 
@@ -376,14 +418,18 @@ review, not on more work from us.**
 
 **Deliverables**
 - Species + counts: `~/pipeline_poc/speciesID_djeke_v3.tsv`
-- Distances (001–064): `~/distance_out/distances_djeke.tsv`
+- Distances 001–064 (hand-calibrated): `~/distance_out/distances_djeke.tsv`
+- Distances 065–100 (parametric): `~/distance_065/distances_065.tsv`
 - Behavior model + predictions: `~/behavior_eval/yolo_runs/motion/`, `~/behavior_eval/motion_yolo_pred.tsv`
 
 **Re-run (all on a compute node, never the login node)**
 ```bash
-# distance
+# distance (001-064, hand-calibrated)
 sbatch slurm/distance_calibration.sbatch          # per-camera calibration
 sbatch slurm/emit_distances.sbatch                # write the distances table
+# distance (065-100, parametric, no ground truth)
+python scripts/parametric_distance.py fit         # fit the shared geometry on 001-064
+sbatch slurm/distance_065.sbatch                  # detect + emit for 065-100
 # productionizing
 sbatch slurm/pipeline_djeke_v3.sbatch             # full pipeline over DJEKE
 # behavior (build + train + score, one job)

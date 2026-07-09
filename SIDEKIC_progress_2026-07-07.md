@@ -10,16 +10,19 @@ Prepared 2026-07-08 (covering recent work) · Brian Zhou
 ---
 
 ## Highlights
-- ✅ **Distance stage completed and validated** — median error **0.95 m** across 64 stations; PR in review.
+- ✅ **Distance stage now covers all 100 stations** — **0.95 m** on the 64 measured stations, plus a **parametric model that adds the 36 previously-deferred stations with no new fieldwork** (~1.28 m, QC-validated); PR in review.
+- ✅ **Quantified the ground-truth-label budget** — **~5–6 labels per new station → ~1 m**, giving the field team a concrete target for future deployments.
 - ✅ **Two automated quality flags added** — camera-reaction detection and low-confidence-station flagging.
 - ✅ **Rigorously evaluated a label-free calibration alternative** and documented why the validated method stays.
-- 🔄 **Built and benchmarked a headless behavior detector** — **beats the baseline ~2.2×** on a first pass.
+- ✅ **Built and benchmarked a headless behavior detector** — **beats the baseline ~2.4×** (macro-F1 0.384).
 
 ---
 
 ## 1. Distance — "how far is each animal from the camera?"
 
 Estimating per-animal distance (for abundance analysis) on grayscale infra-red forest footage.
+
+![Distance error — our per-station calibration vs off-the-shelf depth AI](progress_charts/distance_error.png)
 
 - **Per-station calibration → 0.95 m median error** (leave-one-out validated) across all 64
   ground-truthed stations — vs ~1.5 m for off-the-shelf depth models, which are out-of-domain
@@ -33,8 +36,24 @@ Estimating per-animal distance (for abundance analysis) on grayscale infra-red f
   the validated per-station method is retained. The evaluation itself was hardened after a
   peer-caught methodology issue.
 
-**Status:** complete; pull request in review. A geometry-based extension could calibrate the
-*un*-measured stations without new ground truth — pending camera-installation specs from the field team.
+**Extended to the 36 un-measured stations (065–100).** A parametric camera-geometry model —
+calibrated on the 64 ground-truthed stations and relying on the standardized camera install —
+now assigns distances to the previously-deferred stations with **no new fieldwork**: 14,181
+distances, QC-validated against the ground-truth distribution (identical **4.0 m median**; 97%
+of detections fall within the calibrated range). **The full DJEKE archive now has distances for
+all 100 stations.** Expected error ~1.28 m (from leave-one-station-out cross-validation).
+
+![065–100 parametric distances — sanity-checked against ground truth](progress_charts/distance_065_qc.png)
+
+**How many GT labels does a new station need?** ~**5–6 labels** per well-sited station reach
+~1 m; with only 2–4, anchoring to the standardized-install geometry keeps error ~1.1–1.2 m
+(a fresh per-station fit is unstable that low). Sloped stations don't reach 1 m at any label
+count — they need re-siting, and are auto-flagged.
+
+![GT-label budget to reach ~1 m](progress_charts/distance_label_budget.png)
+
+**Status:** complete for all 100 stations; pull request in review. Jake's installation specs
+will further tighten the 36 parametric stations (physically anchor the geometry + per-station slope).
 
 ---
 
@@ -43,27 +62,33 @@ Estimating per-animal distance (for abundance analysis) on grayscale infra-red f
 Classifying behavior (stay / run / look / smell / approach). Hard because **~95% of observations
 are "stay"** — the informative behaviors are rare.
 
+![Behavior recognition — beats the baseline ~2.4×](progress_charts/behavior_macrof1.png)
+
+![Behavior detector — F1 by behavior (honest operating point)](progress_charts/behavior_f1_by_class.png)
+
 - **Reproducible evaluation harness + baseline** — established the "always predict stay" baseline
   (**macro-F1 0.157**) as the bar any real model must beat.
 - **Evaluated candidate tools** (BehaveAI, PoseR, SLEAP, AniMo) and implemented a **motion-based
   behavior detector** running **headless on the H100 cluster**, auto-labeled from ground truth — no
   manual annotation required.
-- **First result: macro-F1 0.351 / mAP 0.354 — ~2.2× the baseline.** Strong recall on the active
-  behaviors (running, looking, sniffing); precision is improving through tuning.
+- **Result: macro-F1 0.384 / mAP 0.365 — ~2.4× the baseline.** Strongest on **look & smell**
+  (F1 ≈ 0.4–0.46); the rarer/faster behaviors and **precision** (false alarms on wind/vegetation
+  motion) are the next work.
 
-**Status:** approach validated and improving; a scaled-up retrain is running now for a stronger number.
+**Status:** approach validated; a scaled-up retrain improved it to **macro-F1 0.384**. The next
+lever is precision (fewer false alarms), not simply more data.
 
 ---
 
 ## Status at a glance
 | Workstream | Status | Key result |
 |---|---|---|
-| Distance calibration | ✅ complete · in review | **0.95 m** median error, 64 stations |
+| Distance — all 100 stations | ✅ complete · in review | **0.95 m** (64 measured) + **~1.28 m** parametric (36 new) |
 | Distance quality flags | ✅ complete | camera-reaction + 14/64 low-confidence |
 | Alt. (label-free) calibration | ✅ evaluated | doesn't generalize → validated method retained |
-| Behavior recognition | 🔄 validated · improving | **macro-F1 0.351** (~2.2× baseline) |
+| Behavior recognition | 🔄 validated · improving | **macro-F1 0.384** (~2.4× baseline) |
 
 ## Next steps
 1. Merge the Distance (and Productionizing) pull requests — in review.
 2. Complete the scaled behavior retrain → improved score.
-3. Geometry-based distance for un-measured stations — pending field-installation specs.
+3. Refine the 36 parametric stations with Jake's installation specs (anchor geometry + per-station slope).
