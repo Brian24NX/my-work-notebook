@@ -14,7 +14,7 @@ Prepared 2026-07-08 (covering recent work) · Brian Zhou
 - ✅ **Quantified the ground-truth-label budget** — **~5–6 labels per new station → ~1 m**, giving the field team a concrete target for future deployments.
 - ✅ **Two automated quality flags added** — camera-reaction detection and low-confidence-station flagging.
 - ✅ **Rigorously evaluated a label-free calibration alternative** and documented why the validated method stays.
-- ✅ **Built and benchmarked a headless behavior detector** — **beats the baseline ~2.4×** (macro-F1 0.384).
+- ✅ **Built and benchmarked a headless behavior detector** — **beats the baseline ~2.3×** (macro-F1 0.359) on a corrected, leak-free scoreboard; precision fixes validated by a controlled A/B.
 
 ---
 
@@ -62,7 +62,7 @@ will further tighten the 36 parametric stations (physically anchor the geometry 
 Classifying behavior (stay / run / look / smell / approach). Hard because **~95% of observations
 are "stay"** — the informative behaviors are rare.
 
-![Behavior recognition — beats the baseline ~2.4×](progress_charts/behavior_macrof1.png)
+![Behavior recognition — 2.3× the naive baseline](progress_charts/behavior_macrof1.png)
 
 ![Behavior detector — F1 by behavior (honest operating point)](progress_charts/behavior_f1_by_class.png)
 
@@ -71,12 +71,17 @@ are "stay"** — the informative behaviors are rare.
 - **Evaluated candidate tools** (BehaveAI, PoseR, SLEAP, AniMo) and implemented a **motion-based
   behavior detector** running **headless on the H100 cluster**, auto-labeled from ground truth — no
   manual annotation required.
-- **Result: macro-F1 0.384 / mAP 0.365 — ~2.4× the baseline.** Strongest on **look & smell**
-  (F1 ≈ 0.4–0.46); the rarer/faster behaviors and **precision** (false alarms on wind/vegetation
-  motion) are the next work.
+- **Result: macro-F1 0.359 / mAP 0.371 — ~2.3× the baseline.** Strongest on **look & smell**
+  (F1 ≈ 0.46–0.48); run/rest/approach stay weak — they're example-starved (rest: 7 test clips).
+- **Precision fixes validated by a controlled A/B** — hard negatives + largest-blob labels +
+  multi-frame aggregation beat the plain version on overall quality (**mAP 0.371 vs 0.346**) and are
+  far better-calibrated (usable at a normal sensitivity, not only cranked to an extreme).
+- **Corrected the evaluation scoreboard** — a stray missing camera-site had made one station leak
+  across the train/test split; it's now split by physical camera. The clean **0.359** is slightly
+  below the earlier (flawed-split) 0.384 — this is the honest, defensible number.
 
-**Status:** approach validated; a scaled-up retrain improved it to **macro-F1 0.384**. The next
-lever is precision (fewer false alarms), not simply more data.
+**Status:** validated on a leak-free scoreboard; precision fixes shipped. The remaining weak
+behaviors need more labeled examples, not more model tuning.
 
 ---
 
@@ -86,9 +91,9 @@ lever is precision (fewer false alarms), not simply more data.
 | Distance — all 100 stations | ✅ complete · in review | **0.95 m** (64 measured) + **~1.28 m** parametric (36 new) |
 | Distance quality flags | ✅ complete | camera-reaction + 14/64 low-confidence |
 | Alt. (label-free) calibration | ✅ evaluated | doesn't generalize → validated method retained |
-| Behavior recognition | 🔄 validated · improving | **macro-F1 0.384** (~2.4× baseline) |
+| Behavior recognition | 🔄 validated · leak-free scoreboard | **macro-F1 0.359** (~2.3× baseline) |
 
 ## Next steps
-1. Merge the Distance (and Productionizing) pull requests — in review.
-2. Complete the scaled behavior retrain → improved score.
+1. Merge **PR #26** (Distance — **approved by Danni**) and nudge her on **#23** (Productionizing).
+2. Behavior: precision fixes done + scoreboard corrected; next is more labeled examples for the rare behaviors, or a pose-based approach.
 3. Refine the 36 parametric stations with Jake's installation specs (anchor geometry + per-station slope).

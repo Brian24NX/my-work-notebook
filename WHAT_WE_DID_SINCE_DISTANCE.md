@@ -1,7 +1,7 @@
 # What we've built since Distance — the plain-English recap
 
 *A jargon-free walkthrough of the Distance, Productionizing, and Behavior work, for Brian.
-Written 2026-07-07. (The technical version lives in `~/SIDEKIC_HANDOFF.md`.)*
+Written 2026-07-07, updated 2026-07-09. (Fuller technical version: `~/SIDEKIC_since_distance_deepdive.md`.)*
 
 ---
 
@@ -83,14 +83,26 @@ key" leak into the "study material," making one number look better than it was. 
 caught it.** I retracted that number and fixed the code so it can't happen again. (Normal
 science — the point is we don't fool ourselves.)
 
-### Jake's field info → a possible future shortcut
-Jake told us the cameras are set up in a **standardized way** (fixed height ~1 m, fixed
-angle). If we know the exact setup numbers, we might compute distance from geometry alone —
-no hand-measuring — for the cameras we haven't measured. **He's sending the setup protocol;
-that idea is on hold until it arrives.**
+### Jake's field info → the shortcut that finished the job (all 100 cameras)
+Jake told us the cameras are set up in a **standardized way** (fixed height ~1 m, fixed angle).
+That was the key: if every camera is installed the same, **one geometry formula works for all of
+them** — so for the 36 cameras we never hand-measured, we could compute distance from the shared
+setup, **with no fieldwork**. I tested it honestly (fit the formula on 63 cameras, predict the
+64th it never saw): **~1.28 m accuracy with zero measuring** (~1.15 m on normally-sited cameras).
+So I ran it on those 36 cameras → **14,181 distances**, and **now the whole archive (all 100
+cameras) has distances.** I sanity-checked them against the measured ones: same typical distance
+(4 m median), and 97% of animals land in the range the formula was built on. ✅
 
-**Distance bottom line:** ✅ done and delivered for the 64 measured cameras (~1 m accuracy,
-with trust-flags and reaction-flags). Unmeasured cameras are a "later, if wanted" item.
+**Danni's follow-up** ("how many hand-measurements does a *new* camera need to stay near 1 m?"):
+I answered it from the data — **about 5–6 per camera** gets you to ~1 m; with only 2–4, leaning on
+the shared formula keeps it ~1.1–1.2 m. Concrete guidance for future deployments.
+
+**The review:** Danni reviewed the distance code and **approved it** — with a few sharp notes I
+fixed (a possible crash, an over-sensitive flag, a subtle validation tweak); a code-review bot's
+notes too.
+
+**Distance bottom line:** ✅ **done for all 100 cameras** — 0.95 m on the 64 measured, ~1.28 m on
+the 36 computed — with trust-flags and reaction-flags. **PR #26 is approved and ready to merge.** 🏁
 
 ---
 
@@ -145,24 +157,49 @@ to run automatically on the server:** turn clips into motion-color frames → au
 boxes from the motion → auto-label them from the ground-truth we already have (no
 hand-drawing) → train a detector → test → score vs the 0.157 floor.
 
-### It's running right now
-That whole thing is **submitted and cooking on the cluster (job 1993844)** — no install
-needed (the server already had the engine). In a few hours it'll tell us **whether
-motion-based behavior detection beats the 0.157 bar.** I'm watching it and will report the
-number automatically.
+### The result: it works — and we made it better, then made it *honest*
+The first trial **beat the 0.157 bar** — the motion-based detector scored about **0.35** (~2.2×
+the lazy baseline). Good, but it **over-fired**: it cried "running!" at wind-blown leaves. So I
+did a round of **precision fixes** — showing it examples of "motion that is NOT a behavior" (wind,
+a standing animal) labeled as *nothing*, training only on the animal's own motion, and requiring a
+behavior to show up across *several* frames (not a one-frame fluke).
 
-**The other 3 tools:** scoped and queued behind BehaveAI's result — PoseR (same approach Noah
-used, needs skeleton-tracking first), SLEAP (needs hand-labeling), AniMo (a "generate fake
-training data" idea for later).
+**Then I caught a bug in our own scoreboard** (the thing that grades the model). Its way of
+splitting cameras into "study" vs "exam" sets leaned on a label that was blank for one clip, which
+quirkily let a sliver of one camera sit on both sides. I fixed it to split by the actual camera,
+then re-ran a clean **head-to-head**: plain model vs. the precision-fixed model, on the fixed
+scoreboard.
+
+**Clean result: the precision fixes won.** Overall quality up ~7%, the strongest behavior (look)
+clearly better, and the improved model is **much better behaved** — it works at a normal
+sensitivity, where the old one only worked cranked to an extreme. Honest final number: **macro-F1
+0.359 (~2.3× the baseline)** on a trustworthy, leak-free scoreboard. The stubborn weak behaviors
+(run / rest / approach) are simply **starved for examples** — "rest" has only 7 test clips, so no
+method will shine there.
+
+*(Same "less flattering but trustworthy" pattern as before: fixing the scoreboard nudged the
+number from 0.384 down to the honest 0.359 — the earlier figure was on the flawed split.)*
+
+**The other 3 tools** (PoseR / SLEAP / AniMo) are the *skeleton-based* route — the same family as
+**Noah's model, which has since been merged into the main pipeline.** So our motion-based line is
+the genuinely *different* approach; whether to also pursue the skeleton route is a next-step choice.
 
 ---
 
 ## Where we are right now
 | thread | status |
 |---|---|
-| **Distance** | ✅ done (~1 m), reaction + trust flags; waiting for Danni to merge PR #26 |
-| **Productionizing** | ✅ done, review fixed; waiting for Danni to merge PR #23 |
-| **Behavior** | 🔄 the BehaveAI-style trial is **running now** — real score vs 0.157 coming soon |
+| **Distance** | ✅ **done, all 100 cameras** (0.95 m measured / ~1.28 m computed); **PR #26 approved, ready to merge** |
+| **Productionizing** | ✅ done, review fixed; **PR #23 waiting for Danni** |
+| **Behavior** | ✅ **validated & honest** — motion-based detector, macro-F1 0.359 (~2.3× baseline); committed on your branch |
 
-**Waiting on people, not on me:** Danni (approve the two finished PRs), Jake (send the camera
-setup protocol → unlocks the distance shortcut), and the behavior trial to finish.
+**What's left is mostly people/decisions, not blocked work:**
+- **Merge** PR #26 (approved) and nudge Danni on #23.
+- **Your behavior branch → a PR — there's a wrinkle:** while our line was in progress, **Noah's
+  skeleton-based behavior work merged into main**, and both use a file named `eval_behavior.py`
+  (his grades *his* model; ours is a *tool-agnostic* scoreboard that grades *any* model the same
+  way). Also, our branch was started off a very old copy of the project. So turning our line into a
+  clean PR needs a quick decision on how the two fit together — I've laid out the options in my
+  message. **I did not push anything.**
+- **Behavior next (optional):** more labeled examples for the rare behaviors, or try the skeleton
+  route — or treat this as a clean stopping point.
