@@ -21,13 +21,13 @@ full story.)
 | 1 Detect | Is there an animal? | ✅ merged | ~92% of animals found |
 | 2 Count | How many? | ✅ merged | ~90% within ±1 individual |
 | 3 Species | What species? | ✅ merged | micro-F1 ~57% (beats off-the-shelf) |
-| **4 Distance** | **How far away?** | ✅ done (all 100 stations), **PR #26 in review** | **0.95 m** measured + **~1.28 m** parametric |
+| **4 Distance** | **How far away?** | ✅ done (all 100 stations), **PR #26 approved** | **0.95 m** measured + **~1.28 m** parametric |
 | **Productionizing** | **One push-button program** | ✅ done, **PR #23 in review** | **14,577 clips processed** |
-| **5 Behavior** | **What is it doing?** | 🔄 validated + improving | **macro-F1 0.384 (~2.4× baseline)** |
+| **5 Behavior** | **What is it doing?** | 🔄 validated · **PR #33 open** | **macro-F1 0.359 (~2.3× baseline)** |
 
-**One-sentence status:** the first four stages are finished (two awaiting a teammate's review-click),
-and the behavior stage has a working, validated first model that beats the baseline ~2.4× and is
-improving.
+**One-sentence status:** the first four stages are finished (Distance **#26 approved**; Productionizing
+**#23** pending), and the behavior stage is a validated model that beats the baseline ~2.3× — now up as
+**PR #33**.
 
 ---
 
@@ -73,20 +73,23 @@ model/method tailored to our data.
     ├─ tested Danni's tape-video idea .......... ✅ evaluated → doesn't generalize
     ├─ parametric model → 065-100 (no GT) ...... ✅ ~1.28 m, 14,181 distances  (NEW)
     ├─ GT-label budget for new stations ........ ✅ ~5-6 labels → ~1 m         (NEW)
-    └─ addressed Danni's PR #26 review ......... ✅ bugs fixed, 28 tests       (NEW)
+    └─ PR #26 review → **Danni approved** ...... ✅ ready to merge             (NEW)
 
   PRODUCTIONIZING ────────────────────────────────────────▶ (done, PR #23)
     ├─ one end-to-end program .................. ✅ 14,577 clips
     └─ addressed review (Danni + bot) .......... ✅
 
-  BEHAVIOR ───────────────────────────────────────────────▶ (running, improving)
+  BEHAVIOR ───────────────────────────────────────────────▶ (validated → PR #33)
     ├─ built a fair scoreboard + baseline ...... ✅ floor = 0.157
     ├─ evaluated 4 tools, picked BehaveAI ...... ✅
     ├─ derisk: motion works on night video ..... ✅
     ├─ rebuilt BehaveAI's method headless ...... ✅
     ├─ first result .............................. ✅ 0.351
     ├─ fixed a GPU-waste / thrash issue ........ ✅
-    └─ scaled retrain .......................... ✅ 0.384 (~2.4× baseline)
+    ├─ precision fixes (hard negatives, …) ..... ✅ beat the plain baseline (A/B)
+    ├─ fixed a scoreboard leak (NA-site) ....... ✅ split now by physical camera
+    ├─ clean, honest result .................... ✅ macro-F1 0.359 / mAP 0.371 (~2.3×)
+    └─ opened PR #33 (additive) ................ ✅ renamed our scoreboard; Noah's untouched
 ```
 
 The rest of this doc explains each of these lines in depth.
@@ -224,8 +227,10 @@ Concrete rule for the field team: *collect ~5 distance points at each new camera
   `validate_reference_calibration.py`, `parametric_distance.py`, `distance_detect_065.py`,
   `distance_label_budget.py`, `distance_065_qc.py`.
 - **Review addressed:** Danni's PR #26 review (a crash on markers-only calibration, an over-sensitive
-  reaction flag, + minor notes) and 6 Copilot notes — all fixed, **28 tests pass**, reply posted.
-- **Status:** complete (all 100 cameras); **pull request #26** in review, waiting on Danni's approval.
+  reaction flag, + minor notes) and 6 Copilot notes — all fixed, **28 tests pass**, replies posted. Her
+  final note (each transfer fold was seeded from the all-data fit) is fixed too; re-seeding **confirmed
+  the 1.28 m was already honest** (unchanged, to 5 decimals).
+- **Status:** complete (all 100 cameras); **PR #26 is approved by Danni — ready to merge.** 🏁
 
 ---
 
@@ -313,22 +318,26 @@ clip's behavior, so we tag the frames automatically instead of by hand.)*
 
 ### 5.6 The results
 
-![Behavior recognition — beats the baseline ~2.4×](progress_charts/behavior_macrof1.png)
+![Behavior recognition — 2.3× the naive baseline](progress_charts/behavior_macrof1.png)
 
-| Version | Data | Best macro-F1 | mAP | vs floor |
-|---|---|---|---|---|
-| Baseline (guess STAY) | — | 0.157 | — | 1× |
-| First run | ~400 clips | 0.351 | 0.354 | 2.2× |
-| **Scaled retrain** | ~1,500 clips | **0.384** | **0.365** | **2.4×** |
+| Version | macro-F1 | mAP | vs floor |
+|---|---|---|---|
+| Baseline (guess STAY) | 0.157 | — | 1× |
+| Plain motion-YOLO | 0.345 | 0.346 | 2.2× |
+| **+ precision fixes** | **0.359** | **0.371** | **2.3×** |
 
-More data helped. The model's *internal* validation score jumped a lot (0.325 → 0.509), but the
-*held-out* gain was modest — meaning raw data volume is starting to plateau.
+The precision fixes (hard negatives, largest-blob labels, multi-frame aggregation) beat the plain
+version in a **controlled A/B** — same data, same training — on overall quality (**mAP 0.371 vs
+0.346**), and the improved model is far better *calibrated* (works at a normal sensitivity; the plain
+one only worked cranked to an extreme). All numbers are on the **corrected, leak-free scoreboard**
+(see the note below).
 
 **Honest per-behavior breakdown** (this is what matters, not a single vanity number):
 
 ![Behavior detector — F1 by behavior](progress_charts/behavior_f1_by_class.png)
 
-It's genuinely decent at **look (0.46)** and **smell (0.41)**, weak at run/approach/rest.
+It's genuinely decent at **look (0.48)** and **smell (0.46)**, weak at run/approach/rest — those three
+are example-starved (rest has only 7 test clips, so no method will shine there).
 
 > **A trap we avoided (worth understanding):** an earlier chart showed "100% recall" on look/smell.
 > That sounds amazing but is **misleading** — it meant the model shouted "look/smell!" on almost
@@ -336,9 +345,17 @@ It's genuinely decent at **look (0.46)** and **smell (0.41)**, weak at run/appro
 > **Analogy:** a smoke alarm that beeps 24/7 catches 100% of fires but is useless. The honest
 > measure is **F1** (above), which balances *catching them* against *false alarms*.
 
-**The real frontier is precision, not more data.** The model over-fires on non-animal motion (wind,
-swaying leaves). Next gains come from teaching it to ignore that (harder negative examples, better
-aggregation, calibration) — not simply feeding it more clips.
+**We then did the precision work** — hard negatives (showing it wind/vegetation labeled as "nothing"),
+largest-blob labels, and multi-frame aggregation. On the clean scoreboard it beat the plain version
+(mAP 0.371 vs 0.346) and is much better-calibrated. The remaining weak behaviors (run/rest/approach)
+are **example-starved**, not a tuning problem — so the next lever is more labels or a pose-based method.
+
+> **A scoreboard bug we caught + fixed (worth knowing):** the way we split cameras into "study" vs
+> "exam" sets relied on a camera-site label; one clip's label was blank, which quirkily became its own
+> "exam" camera and dragged one real camera (DJK052) into *both* sides. We fixed the split to key off
+> the **physical camera in the filename**. The honest number moved slightly (0.384 → **0.359**) — the
+> earlier figure was on the flawed split. Same "less flattering but trustworthy" pattern as the
+> 100%-recall catch above.
 
 ### 5.7 A lesson we learned the hard way: right hardware for the job
 While scaling up, a build job accidentally ran on the shared **login node** and thrashed for
@@ -351,11 +368,19 @@ While scaling up, a build job accidentally ran on the shared **login node** and 
 Fixed the build to run in parallel across CPU cores on a compute node → the H100 is no longer held
 idle during data prep.
 
-### 5.8 Behavior — status
-- **Code (branch `brian/pose-behavior`):** `eval_behavior.py` (scoreboard), `build_motion_yolo_dataset.py`,
-  `motion_yolo_infer.py`, `detect_camera_jerk.py`, `behaveai_to_behavior.py`.
-- **Status:** validated approach, **macro-F1 0.384 (~2.4× baseline)**; precision identified as the
-  next lever. Not yet a pull request (still exploratory).
+### 5.8 Behavior — status & the PR
+- **Code (PR branch `brian/behavior-motion-yolo`):** `behavior_eval_harness.py` (the tool-agnostic
+  scoreboard), `build_motion_yolo_dataset.py`, `motion_yolo_infer.py`, `behaveai_to_behavior.py`,
+  `run_superanimal_pose.py` + slurm jobs. **13 tests pass.**
+- **Result:** validated on a **leak-free scoreboard**, **macro-F1 0.359 / mAP 0.371 (~2.3× baseline)**;
+  the precision fixes beat the plain baseline in a controlled A/B.
+- **PR #33 opened (additive).** While our line was in progress, Noah's *skeleton-based* behavior model
+  merged into `main` (#30) — and both lines happened to have a file named `eval_behavior.py` (his grades
+  *his* model; ours is the tool-agnostic scoreboard). So we opened the PR the clean way: a fresh branch
+  off `main`, our scoreboard **renamed `behavior_eval_harness.py`** so **Noah's file is untouched** —
+  purely additive (10 new files). The PR invites the team to decide which scoreboard to standardize on.
+- **What's left:** the rare behaviors (run/rest/approach) are example-starved; the skeleton route (PoseR /
+  SuperAnimal) is the other option if we want a higher ceiling.
 
 ---
 
@@ -363,13 +388,13 @@ idle during data prep.
 
 | Thread | State | Key result | Waiting on |
 |---|---|---|---|
-| Distance (001–064) | ✅ done | 0.95 m, hand-calibrated | Danni to merge #26 |
-| Distance (065–100) | ✅ done | ~1.28 m parametric, 14,181 distances, QC-clean | Danni to merge #26 |
+| Distance (001–064) | ✅ done | 0.95 m, hand-calibrated | **#26 approved → your merge** |
+| Distance (065–100) | ✅ done | ~1.28 m parametric, 14,181 distances, QC-clean | **#26 approved → your merge** |
 | Distance flags | ✅ done | reaction + 14/64 low-confidence | — |
 | Reference-video calibration | ✅ evaluated, ruled out | doesn't generalize | — |
-| PR #26 review | ✅ addressed | bugs fixed, 28 tests pass, reply posted | Danni to merge #26 |
+| PR #26 review | ✅ addressed + **approved** | bugs fixed, 28 tests, Danni approved | your merge click |
 | Productionizing | ✅ done | 14,577 clips | Danni to merge #23 |
-| Behavior | 🔄 improving | macro-F1 0.384 (2.4×) | precision work / decision to PR |
+| Behavior | ✅ validated · **PR #33 open** | macro-F1 0.359 / mAP 0.371 (2.3×), leak-free | review of #33 |
 
 **Everything substantive is done or improving; the two finished stages are gated on a teammate's
 review, not on more work from us.**
@@ -378,10 +403,10 @@ review, not on more work from us.**
 
 # 7. What's next (prioritized)
 
-1. **Get Danni to review/merge #23 + #26** — two finished stages, one click away. *Highest leverage.*
-   #26 (distance) is fully review-addressed; #23 (productionizing) is waiting too.
-2. **Behavior — precision pass** — cut false alarms (wind/vegetation) via hard negatives + better
-   aggregation. Bigger lever than more data.
+1. **Merge #26 (distance) — it's approved** (one click). Then nudge Danni on **#23** (productionizing)
+   and get **#33** (behavior) reviewed. *Highest leverage.*
+2. **Behavior — the precision pass is done** (it beat the plain baseline in a clean A/B). The next
+   behavior lever is more labeled examples for the rare behaviors (run/rest/approach), or the pose route.
 3. **Pose-based behavior track** (skeleton → PoseR) — queued behind the BehaveAI result.
 4. **Scale to other sites** (GTAP, MONDIKA) once their footage is mounted.
 
@@ -434,8 +459,8 @@ sbatch slurm/distance_065.sbatch                  # detect + emit for 065-100
 sbatch slurm/pipeline_djeke_v3.sbatch             # full pipeline over DJEKE
 # behavior (build + train + score, one job)
 sbatch slurm/behavior_motion_yolo.sbatch          # motion-YOLO trial
-python scripts/eval_behavior.py --pred <preds> --min-score 0.9   # score vs the 0.157 floor
+python scripts/behavior_eval_harness.py --pred <preds> --min-score 0.9   # score vs the 0.157 floor
 ```
 
-**Pull requests:** #23 (productionizing), #26 (distance) — both in review. Behavior work is on
-branch `brian/pose-behavior` (no PR yet).
+**Pull requests:** **#26 (distance) — approved, ready to merge**; **#23** (productionizing) — in review;
+**#33 (behavior, motion-based) — open** (branch `brian/behavior-motion-yolo`).
