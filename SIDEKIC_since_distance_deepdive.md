@@ -21,13 +21,13 @@ full story.)
 | 1 Detect | Is there an animal? | ✅ merged | ~92% of animals found |
 | 2 Count | How many? | ✅ merged | ~90% within ±1 individual |
 | 3 Species | What species? | ✅ merged | micro-F1 ~57% (beats off-the-shelf) |
-| **4 Distance** | **How far away?** | ✅ done (all 100 stations), **PR #26 approved** | **0.95 m** measured + **~1.28 m** parametric |
-| **Productionizing** | **One push-button program** | ✅ done, **PR #23 in review** | **14,577 clips processed** |
+| **4 Distance** | **How far away?** | ✅ done (all 100 stations), **PR #26 merged** | **0.95 m** measured + **~1.28 m** parametric |
+| **Productionizing** | **One push-button program** | ✅ done, **PR #23 merged** | **14,577 clips processed** |
 | **5 Behavior** | **What is it doing?** | 🔄 validated · **PR #33 open** | **macro-F1 0.359 (~2.3× baseline)** |
 
-**One-sentence status:** the first four stages are finished (Distance **#26 approved**; Productionizing
-**#23** pending), and the behavior stage is a validated model that beats the baseline ~2.3× — now up as
-**PR #33**.
+**One-sentence status:** the first four stages are **merged to `main`** (Distance #26 + Productionizing
+#23), the behavior stage is a validated model that beats the baseline ~2.3× (up as **PR #33**), and its
+labels are now being written into the distances deliverable to finish it.
 
 ---
 
@@ -65,7 +65,7 @@ model/method tailored to our data.
 ## 2. Timeline — what we actually did since Distance
 
 ```
-  DISTANCE ───────────────────────────────────────────▶ (done, all 100 stations, PR #26)
+  DISTANCE ───────────────────────────────────────────▶ (merged to main, all 100 stations, #26)
     ├─ tried off-the-shelf depth AI ............ failed (out of domain)
     ├─ built per-station calibration (001-064) . ✅ ~0.95 m
     ├─ added camera-reaction flag (Colleen) .... ✅
@@ -73,9 +73,9 @@ model/method tailored to our data.
     ├─ tested Danni's tape-video idea .......... ✅ evaluated → doesn't generalize
     ├─ parametric model → 065-100 (no GT) ...... ✅ ~1.28 m, 14,181 distances  (NEW)
     ├─ GT-label budget for new stations ........ ✅ ~5-6 labels → ~1 m         (NEW)
-    └─ PR #26 review → **Danni approved** ...... ✅ ready to merge             (NEW)
+    └─ #26 review → approved → **merged to main** ✅ 2026-07-12                (NEW)
 
-  PRODUCTIONIZING ────────────────────────────────────────▶ (done, PR #23)
+  PRODUCTIONIZING ────────────────────────────────────────▶ (merged to main, #23)
     ├─ one end-to-end program .................. ✅ 14,577 clips
     └─ addressed review (Danni + bot) .......... ✅
 
@@ -230,7 +230,7 @@ Concrete rule for the field team: *collect ~5 distance points at each new camera
   reaction flag, + minor notes) and 6 Copilot notes — all fixed, **28 tests pass**, replies posted. Her
   final note (each transfer fold was seeded from the all-data fit) is fixed too; re-seeding **confirmed
   the 1.28 m was already honest** (unchanged, to 5 decimals).
-- **Status:** complete (all 100 cameras); **PR #26 is approved by Danni — ready to merge.** 🏁
+- **Status:** complete (all 100 cameras); **PR #26 merged to `main` (2026-07-12).** 🏁
 
 ---
 
@@ -251,7 +251,7 @@ you point at a clip folder and it writes the `speciesID` table.
   (`djeke_speciesID_v3_review`).
 - **Review addressed:** Danni noted we had a home-made *copy* of the counting logic → switched to the
   official tested version; a review bot flagged a few robustness nits → fixed.
-- **Status:** complete; **pull request #23** in review. *(Note: it overlaps a detection+species
+- **Status:** complete; **pull request #23 merged to `main`.** *(Note: it overlaps a detection+species
   backend Noah merged recently — Danni will decide how they combine.)*
 
 ---
@@ -388,12 +388,12 @@ idle during data prep.
 
 | Thread | State | Key result | Waiting on |
 |---|---|---|---|
-| Distance (001–064) | ✅ done | 0.95 m, hand-calibrated | **#26 approved → your merge** |
-| Distance (065–100) | ✅ done | ~1.28 m parametric, 14,181 distances, QC-clean | **#26 approved → your merge** |
+| Distance (001–064) | ✅ merged | 0.95 m, hand-calibrated | — (on main) |
+| Distance (065–100) | ✅ merged | ~1.28 m parametric, 14,181 distances, QC-clean | — (on main) |
 | Distance flags | ✅ done | reaction + 14/64 low-confidence | — |
 | Reference-video calibration | ✅ evaluated, ruled out | doesn't generalize | — |
-| PR #26 review | ✅ addressed + **approved** | bugs fixed, 28 tests, Danni approved | your merge click |
-| Productionizing | ✅ done | 14,577 clips | Danni to merge #23 |
+| PR #26 | ✅ **merged to main** | bugs fixed, 28 tests, Danni approved | — |
+| Productionizing | ✅ **merged to main** | 14,577 clips | — |
 | Behavior | ✅ validated · **PR #33 open** | macro-F1 0.359 / mAP 0.371 (2.3×), leak-free | review of #33 |
 
 **Everything substantive is done or improving; the two finished stages are gated on a teammate's
@@ -403,8 +403,8 @@ review, not on more work from us.**
 
 # 7. What's next (prioritized)
 
-1. **Merge #26 (distance) — it's approved** (one click). Then nudge Danni on **#23** (productionizing)
-   and get **#33** (behavior) reviewed. *Highest leverage.*
+1. **#26 + #23 are merged to `main`** ✅. Now: get **#33** (behavior) reviewed (Danni/Noah), and
+   **finish the deliverable** — writing behavior into the distances table (running now → `distances_djeke_full.tsv`).
 2. **Behavior — the precision pass is done** (it beat the plain baseline in a clean A/B). The next
    behavior lever is more labeled examples for the rare behaviors (run/rest/approach), or the pose route.
 3. **Pose-based behavior track** (skeleton → PoseR) — queued behind the BehaveAI result.
@@ -462,5 +462,5 @@ sbatch slurm/behavior_motion_yolo.sbatch          # motion-YOLO trial
 python scripts/behavior_eval_harness.py --pred <preds> --min-score 0.9   # score vs the 0.157 floor
 ```
 
-**Pull requests:** **#26 (distance) — approved, ready to merge**; **#23** (productionizing) — in review;
+**Pull requests:** **#26 (distance) + #23 (productionizing) — merged to `main` (2026-07-12)**;
 **#33 (behavior, motion-based) — open** (branch `brian/behavior-motion-yolo`).

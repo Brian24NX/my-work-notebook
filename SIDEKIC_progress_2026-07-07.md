@@ -10,7 +10,7 @@ Prepared 2026-07-08 (covering recent work) · Brian Zhou
 ---
 
 ## Highlights
-- ✅ **Distance stage now covers all 100 stations** — **0.95 m** on the 64 measured stations, plus a **parametric model that adds the 36 previously-deferred stations with no new fieldwork** (~1.28 m, QC-validated); PR in review.
+- ✅ **Distance stage now covers all 100 stations** — **0.95 m** on the 64 measured stations, plus a **parametric model that adds the 36 previously-deferred stations with no new fieldwork** (~1.28 m, QC-validated); merged to main.
 - ✅ **Quantified the ground-truth-label budget** — **~5–6 labels per new station → ~1 m**, giving the field team a concrete target for future deployments.
 - ✅ **Two automated quality flags added** — camera-reaction detection and low-confidence-station flagging.
 - ✅ **Rigorously evaluated a label-free calibration alternative** and documented why the validated method stays.
@@ -52,7 +52,7 @@ count — they need re-siting, and are auto-flagged.
 
 ![GT-label budget to reach ~1 m](progress_charts/distance_label_budget.png)
 
-**Status:** complete for all 100 stations; pull request in review. Jake's installation specs
+**Status:** complete for all 100 stations; merged to main. Jake's installation specs
 will further tighten the 36 parametric stations (physically anchor the geometry + per-station slope).
 
 ---
@@ -88,12 +88,12 @@ behaviors need more labeled examples, not more model tuning.
 ## Status at a glance
 | Workstream | Status | Key result |
 |---|---|---|
-| Distance — all 100 stations | ✅ complete · in review | **0.95 m** (64 measured) + **~1.28 m** parametric (36 new) |
+| Distance — all 100 stations | ✅ complete · merged to main | **0.95 m** (64 measured) + **~1.28 m** parametric (36 new) |
 | Distance quality flags | ✅ complete | camera-reaction + 14/64 low-confidence |
 | Alt. (label-free) calibration | ✅ evaluated | doesn't generalize → validated method retained |
 | Behavior recognition | 🔄 validated · leak-free scoreboard | **macro-F1 0.359** (~2.3× baseline) |
 
 ## Next steps
-1. Merge **PR #26** (Distance — **approved by Danni**) and nudge her on **#23** (Productionizing).
+1. **#26 + #23 merged to main** ✅ — now finishing the deliverable (writing behavior into the distances table, running) and getting **#33** (behavior) reviewed.
 2. Behavior: precision fixes done + scoreboard corrected; next is more labeled examples for the rare behaviors, or a pose-based approach.
 3. Refine the 36 parametric stations with Jake's installation specs (anchor geometry + per-station slope).
